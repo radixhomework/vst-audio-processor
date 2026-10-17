@@ -1,0 +1,13 @@
+# --- AI coding agents: machine-local configuration, never commit ---
+.zcode/
+.claude/
+.agents/
+.cursor/
+.aider*
+.copilot/
+.continue/
+.cody/
+.windsurf/
+.gemini/
+CLAUDE.local.md
+AGENTS.local.md
