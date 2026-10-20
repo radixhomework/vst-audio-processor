@@ -11,20 +11,21 @@
 
 // Vendor identity (plugin-core spec: name "Audio Processor", vendor
 // "Radixhomework"; "VST" must not appear in the product name).
-#define stringCompanyName "Radixhomework"
-#define stringCompanyWeb ""
-#define stringCompanyEmail ""
-#define stringPluginName "Audio Processor"
+inline constexpr const char* stringCompanyName = "Radixhomework";
+inline constexpr const char* stringCompanyWeb = "";
+inline constexpr const char* stringCompanyEmail = "";
+inline constexpr const char* stringPluginName = "Audio Processor";
+inline constexpr const char* stringPluginControllerName = "Audio Processor Controller";
 
 // Version 0.1.0 — Round 1.
-#define MAJOR_VERSION_INT 0
-#define SUB_VERSION_INT 1
-#define RELEASE_VERSION_INT 0
-#define BUILD_VERSION_INT 0
-#define FULL_VERSION_STR "0.1.0"
+inline constexpr int MAJOR_VERSION_INT = 0;
+inline constexpr int SUB_VERSION_INT = 1;
+inline constexpr int RELEASE_VERSION_INT = 0;
+inline constexpr int BUILD_VERSION_INT = 0;
+inline constexpr const char* FULL_VERSION_STR = "0.1.0";
 
 // Subcategory shown in host browsers: a utility effect.
-#define audioProcessorVST3Category "Fx"
+inline constexpr const char* audioProcessorVST3Category = "Fx";
 
 //------------------------------------------------------------------------
 // Class IDs — never change these once released (see file header).

@@ -2,6 +2,7 @@
 
 #include "version.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace Radixhomework {
@@ -14,16 +15,19 @@ Processor::Processor ()
 }
 
 //------------------------------------------------------------------------
-Steinberg::FUnknown* Processor::createInstance (void*)
+// The VST3 factory contract requires this exact create-function signature
+// (raw void* context) and transfers ownership to the host through the
+// returned raw pointer.
+Steinberg::FUnknown* Processor::createInstance (void* /*context*/) // NOSONAR
 {
-	return (Steinberg::Vst::IAudioProcessor*)new Processor ();
+	return (Steinberg::Vst::IAudioProcessor*)new Processor (); // NOSONAR
 }
 
 //------------------------------------------------------------------------
 Steinberg::tresult PLUGIN_API Processor::initialize (Steinberg::FUnknown* context)
 {
-	Steinberg::tresult result = AudioEffect::initialize (context);
-	if (result != Steinberg::kResultTrue)
+	if (Steinberg::tresult result = AudioEffect::initialize (context);
+	    result != Steinberg::kResultTrue)
 		return result;
 
 	// Placeholder bus layout; the exact mono/stereo contract lands in task 2.1.
@@ -31,6 +35,51 @@ Steinberg::tresult PLUGIN_API Processor::initialize (Steinberg::FUnknown* contex
 	addAudioOutput (STR16 ("Audio Output"), Steinberg::Vst::SpeakerArr::kStereo);
 	return Steinberg::kResultTrue;
 }
+
+//------------------------------------------------------------------------
+namespace {
+
+// Placeholder processing (task 1.2): strict pass-through, or silence when no
+// input bus is connected. Replaced by the DSP chain (mono-sum -> gain -> pan)
+// in task 3.6.
+
+void copyBus (const Steinberg::Vst::AudioBusBuffers& in, Steinberg::Vst::AudioBusBuffers& out,
+              Steinberg::int32 numSamples, Steinberg::int32 sampleSize)
+{
+	const Steinberg::int32 numChannels = std::min (in.numChannels, out.numChannels);
+	for (Steinberg::int32 ch = 0; ch < numChannels; ++ch)
+	{
+		if (sampleSize == Steinberg::Vst::kSample64)
+		{
+			if (in.channelBuffers64[ch] != out.channelBuffers64[ch])
+				memcpy (out.channelBuffers64[ch], in.channelBuffers64[ch],
+				        numSamples * sizeof (Steinberg::Vst::Sample64));
+		}
+		else if (in.channelBuffers32[ch] != out.channelBuffers32[ch])
+		{
+			memcpy (out.channelBuffers32[ch], in.channelBuffers32[ch],
+			        numSamples * sizeof (Steinberg::Vst::Sample32));
+		}
+	}
+	out.silenceFlags = 0;
+}
+
+//------------------------------------------------------------------------
+void clearBus (Steinberg::Vst::AudioBusBuffers& out, Steinberg::int32 numSamples,
+               Steinberg::int32 sampleSize)
+{
+	for (Steinberg::int32 ch = 0; ch < out.numChannels; ++ch)
+	{
+		if (sampleSize == Steinberg::Vst::kSample64 && out.channelBuffers64)
+			memset (out.channelBuffers64[ch], 0, numSamples * sizeof (Steinberg::Vst::Sample64));
+		else if (out.channelBuffers32)
+			memset (out.channelBuffers32[ch], 0, numSamples * sizeof (Steinberg::Vst::Sample32));
+	}
+	out.silenceFlags = (out.numChannels >= 64) ? ~Steinberg::uint64 (0)
+	                                           : ((Steinberg::uint64 (1) << out.numChannels) - 1);
+}
+
+} // namespace
 
 //------------------------------------------------------------------------
 Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& data)
@@ -42,43 +91,11 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 	    data.symbolicSampleSize != Steinberg::Vst::kSample64)
 		return Steinberg::kResultFalse;
 
-	auto& out = data.outputs[0];
-
-	// Placeholder: strict pass-through (no input connected -> silence). The
-	// processing chain (mono-sum -> gain -> pan) lands with task 3.6.
 	if (data.numInputs <= 0)
-	{
-		for (Steinberg::int32 ch = 0; ch < out.numChannels; ++ch)
-		{
-			if (data.symbolicSampleSize == Steinberg::Vst::kSample32 && out.channelBuffers32)
-				memset (out.channelBuffers32[ch], 0, data.numSamples * sizeof (Steinberg::Vst::Sample32));
-			else if (out.channelBuffers64)
-				memset (out.channelBuffers64[ch], 0, data.numSamples * sizeof (Steinberg::Vst::Sample64));
-		}
-		out.silenceFlags = (out.numChannels >= 64) ? ~Steinberg::uint64 (0)
-		                                           : ((Steinberg::uint64 (1) << out.numChannels) - 1);
-		return Steinberg::kResultTrue;
-	}
+		clearBus (data.outputs[0], data.numSamples, data.symbolicSampleSize);
+	else
+		copyBus (data.inputs[0], data.outputs[0], data.numSamples, data.symbolicSampleSize);
 
-	auto& in = data.inputs[0];
-	for (Steinberg::int32 ch = 0; ch < out.numChannels; ++ch)
-	{
-		if (ch >= in.numChannels)
-			continue;
-		if (data.symbolicSampleSize == Steinberg::Vst::kSample32)
-		{
-			if (in.channelBuffers32[ch] != out.channelBuffers32[ch])
-				memcpy (out.channelBuffers32[ch], in.channelBuffers32[ch],
-				        data.numSamples * sizeof (Steinberg::Vst::Sample32));
-		}
-		else
-		{
-			if (in.channelBuffers64[ch] != out.channelBuffers64[ch])
-				memcpy (out.channelBuffers64[ch], in.channelBuffers64[ch],
-				        data.numSamples * sizeof (Steinberg::Vst::Sample64));
-		}
-	}
-	out.silenceFlags = 0;
 	return Steinberg::kResultTrue;
 }
 

@@ -9,7 +9,9 @@
 
 namespace Radixhomework {
 
-class Processor : public Steinberg::Vst::AudioEffect
+// Deriving from AudioEffect (the SDK's standard processor base) is what
+// fixes the depth of the inheritance hierarchy below the SDK's own layers.
+class Processor : public Steinberg::Vst::AudioEffect // NOSONAR
 {
 public:
 	Processor ();
