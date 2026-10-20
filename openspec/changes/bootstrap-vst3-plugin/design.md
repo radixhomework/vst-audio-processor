@@ -124,11 +124,17 @@ host's generic editor and automation lanes clean). Panel is a fixed
 
 - CMake ≥ 3.22, MSVC v143 (VS 2022), Release config produces the `.vst3`
   bundle under `VST3/` in the build dir.
-- GitHub Actions (`windows-latest`): configure, build, run the SDK's validator
-  against the built bundle, upload the bundle as an artifact. Sonar/CodeQL
-  bindings per AGENTS.md quality gates are wired as far as the pipeline allows;
-  if org-level tokens are not yet available, that wiring is recorded as a
-  blocked follow-up rather than silently skipped.
+- GitHub Actions, running on main, PRs and tags (bundles are release
+  material: artifact upload happens on tag pushes only). The job is pinned to
+  the `windows-2022` runner image so its VS 2022/v143 toolchain matches the
+  local one (`windows-latest` has moved to VS 2026-only images); a future
+  toolchain bump will be a deliberate change. Steps: configure, Release build
+  under Sonar's build wrapper, run the SDK's validator against the built
+  bundle, then a SonarCloud scan step consuming `sonar-project.properties` and
+  the wrapper's `bw-output` (analysis limited to `source/`). The scan is gated
+  on the `SONAR_TOKEN` repo secret and skips gracefully until that is
+  provisioned, so the pipeline stays green meanwhile. CodeQL remains a
+  recorded follow-up (task 6.4).
 
 ## Risks / Trade-offs
 

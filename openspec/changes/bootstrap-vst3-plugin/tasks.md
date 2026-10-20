@@ -97,10 +97,12 @@
       parameter values, click-free gain automation, pan behavior, mono-sum,
       bypass sync, meter tracking, clip reset). Verify: checklist results
       recorded in the PR description.
-- [ ] 6.4 Quality-gate wiring per AGENTS.md: Sonar/CodeQL configured to the
-      extent org tokens/bindings allow; anything not possible yet is recorded
-      as an explicit blocked follow-up. Verify: pipeline state (or the blocked
-      note) stated in the PR description.
+- [ ] 6.4 Quality-gate wiring per AGENTS.md: Sonar pipeline wired with the CI
+      (Release build under Sonar's build wrapper + SonarCloud scan step gated
+      on the `SONAR_TOKEN` secret, `sonar-project.properties` at repo root);
+      still open: provision the SonarCloud project and token, wire CodeQL,
+      and state the final pipeline status in the PR description. Verify:
+      pipeline state (or the blocked note) stated in the PR description.
 - [ ] 6.5 Add `THIRD-PARTY-NOTICES.md` containing the VST3 SDK MIT license
       text and the VSTGUI BSD-3 notice, referenced from the README. Verify:
       the file is present and referenced before the first release.
