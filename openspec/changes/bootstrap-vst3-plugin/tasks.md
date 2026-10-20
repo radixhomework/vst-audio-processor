@@ -2,16 +2,16 @@
 
 ## 1. Build system skeleton
 
-- [ ] 1.1 Top-level CMakeLists: C++20, FetchContent the VST3 SDK at a pinned
+- [x] 1.1 Top-level CMakeLists: C++20, FetchContent the VST3 SDK at a pinned
       stable tag (with `VST3_SDK_DIR` cache override), MSVC v143 settings, and a
       plugin target producing a `.vst3` bundle. Verify: configure + build
       succeeds and emits the bundle under `VST3/`.
-- [ ] 1.2 Plugin identity: `source/version.h` (name "Audio Processor", vendor
+- [x] 1.2 Plugin identity: `source/version.h` (name "Audio Processor", vendor
       "Radixhomework", version 0.1.0, committed class IDs that will never
       change) plus factory/module entry registering a placeholder processor and
       controller. Verify: the VST3 validator loads the bundle and reports the
       identity; the bundle appears in Cubase's plugin browser.
-- [ ] 1.3 GitHub Actions workflow (`windows-latest`): configure, build Release,
+- [x] 1.3 GitHub Actions workflow (`windows-latest`): configure, build Release,
       run the SDK validator against the bundle, upload the bundle as artifact.
       Verify: workflow runs green on push.
 
