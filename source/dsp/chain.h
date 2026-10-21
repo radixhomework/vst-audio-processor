@@ -64,22 +64,23 @@ private:
 	{
 		constexpr float halfPi = 1.57079632679489661923f;
 
-		for (std::size_t i = 0; i < left.size (); ++i)
+		for (auto lIt = left.begin (), rIt = right.begin (); lIt != left.end (); ++lIt, ++rIt)
 		{
+			auto& l = *lIt;
+			auto& r = *rIt;
 			// 1) mono-sum: (L + R) * 0.5 on both channels. A full-scale
 			// correlated input cannot clip (-6 dB).
 			if (monoSumEnabled_)
 			{
-				const float mono =
-				    (static_cast<float> (left[i]) + static_cast<float> (right[i])) * 0.5f;
-				left[i] = static_cast<Sample> (mono);
-				right[i] = static_cast<Sample> (mono);
+				const float mono = (static_cast<float> (l) + static_cast<float> (r)) * 0.5f;
+				l = static_cast<Sample> (mono);
+				r = static_cast<Sample> (mono);
 			}
 
 			// 2) gain, per-sample from the ~15 ms ramp.
 			const float g = gain.nextValue ();
-			left[i] *= g;
-			right[i] *= g;
+			l *= g;
+			r *= g;
 
 			// 3) pan/balance: favored channel stays at unity, opposite
 			// follows cos(|p| * pi / 2) — constant-power taper, center at
@@ -87,17 +88,17 @@ private:
 			const float p = panPosition.nextValue ();
 			const float attenuate = std::cos (std::fabs (p) * halfPi);
 			if (p < 0.f)
-				right[i] *= attenuate;
+				r *= attenuate;
 			else
-				left[i] *= attenuate;
+				l *= attenuate;
 		}
 	}
 
 	template <typename Sample>
 	void processMono (std::span<Sample> channel)
 	{
-		for (std::size_t i = 0; i < channel.size (); ++i)
-			channel[i] *= gain.nextValue ();
+		for (auto& sample : channel)
+			sample *= gain.nextValue ();
 	}
 
 	SmoothedValue gain;

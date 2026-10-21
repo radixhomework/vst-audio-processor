@@ -36,8 +36,10 @@ class GainParameter : public Parameter
 public:
 	explicit GainParameter (Steinberg::int32 flags)
 	{
-		Steinberg::UString (info.title, std::size (info.title)).assign (USTRING ("Gain"));
-		Steinberg::UString (info.units, std::size (info.units)).assign (USTRING ("dB"));
+		Steinberg::UString (info.title, static_cast<Steinberg::int32> (std::size (info.title)))
+		    .assign (USTRING ("Gain"));
+		Steinberg::UString (info.units, static_cast<Steinberg::int32> (std::size (info.units)))
+		    .assign (USTRING ("dB"));
 
 		info.flags = flags;
 		info.id = kGainId;
@@ -49,8 +51,7 @@ public:
 	void toString (ParamValue value, Steinberg::Vst::String128 string) const SMTG_OVERRIDE
 	{
 		std::array<char, 32> text {};
-		const int index = gainNormalizedToIndex (value);
-		if (index == 0)
+		if (const int index = gainNormalizedToIndex (value); index == 0)
 			std::format_to_n (text.data (), text.size () - 1, "-inf dB");
 		else
 			std::format_to_n (text.data (), text.size () - 1, "{:.1f} dB",
@@ -67,7 +68,8 @@ class PanParameter : public Parameter
 public:
 	explicit PanParameter (Steinberg::int32 flags)
 	{
-		Steinberg::UString (info.title, std::size (info.title)).assign (USTRING ("Pan"));
+		Steinberg::UString (info.title, static_cast<Steinberg::int32> (std::size (info.title)))
+		    .assign (USTRING ("Pan"));
 
 		info.flags = flags;
 		info.id = kPanId;
