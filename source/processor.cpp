@@ -58,11 +58,8 @@ Steinberg::tresult PLUGIN_API Processor::setBusArrangements (Steinberg::Vst::Spe
 	const Steinberg::Vst::SpeakerArrangement in = inputs[0];
 	const Steinberg::Vst::SpeakerArrangement out = outputs[0];
 
-	const bool isMonoPair =
-	    in == Steinberg::Vst::SpeakerArr::kMono && out == Steinberg::Vst::SpeakerArr::kMono;
-	const bool isStereoPair =
-	    in == Steinberg::Vst::SpeakerArr::kStereo && out == Steinberg::Vst::SpeakerArr::kStereo;
-	if (!isMonoPair && !isStereoPair)
+	if (in != out || (in != Steinberg::Vst::SpeakerArr::kMono &&
+	                  in != Steinberg::Vst::SpeakerArr::kStereo))
 		return Steinberg::kResultFalse;
 
 	getAudioInput (0)->setArrangement (in);
@@ -85,12 +82,7 @@ Steinberg::tresult PLUGIN_API Processor::canProcessSampleSize (Steinberg::int32 
 // audio path never allocates or blocks (plugin-core spec, real-time
 // safety). There is nothing dynamic to allocate yet: the placeholder path
 // works purely on the host-provided buffers; the chain state of tasks 3.x
-// will be created here.
-Steinberg::tresult PLUGIN_API Processor::setActive (Steinberg::TBool state)
-{
-	return AudioEffect::setActive (state);
-}
-
+// will be created on activation.
 //------------------------------------------------------------------------
 namespace {
 
@@ -131,15 +123,22 @@ void clearBus (Steinberg::Vst::AudioBusBuffers& out, Steinberg::int32 numSamples
 }
 
 //------------------------------------------------------------------------
-// Strict input->output pass-through (unmodified samples), used by the bypass
-// path and, until the chain lands, as the processing placeholder. Emits
-// silence when no input bus is connected.
+// Strict input->output pass-through (unmodified samples), used by the
+// bypass path. Emits silence when no input bus is connected.
 void passThrough (Steinberg::Vst::ProcessData& data)
 {
 	if (data.numInputs > 0)
 		copyBus (data.inputs[0], data.outputs[0], data.numSamples, data.symbolicSampleSize);
 	else
 		clearBus (data.outputs[0], data.numSamples, data.symbolicSampleSize);
+}
+
+//------------------------------------------------------------------------
+// The processing chain slot: mono-sum -> gain -> pan (tasks 3.x). Until
+// the chain lands (task 3.6) this is the placeholder pass-through.
+void processChain (Steinberg::Vst::ProcessData& data)
+{
+	passThrough (data);
 }
 
 } // namespace
@@ -185,19 +184,16 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 	    data.symbolicSampleSize != Steinberg::Vst::kSample64)
 		return Steinberg::kResultFalse;
 
-	updateBypassState (data);
-
 	if (bypassActive)
 	{
 		// Bypass (plugin-core spec): input passed to the output unmodified;
 		// gain/pan/mono cannot affect the audio while engaged.
 		passThrough (data);
-		return Steinberg::kResultTrue;
 	}
-
-	// Processing path placeholder: strict pass-through until the chain
-	// (mono-sum -> gain -> pan) lands with task 3.6.
-	passThrough (data);
+	else
+	{
+		processChain (data);
+	}
 	return Steinberg::kResultTrue;
 }
 

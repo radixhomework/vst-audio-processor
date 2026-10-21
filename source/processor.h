@@ -1,7 +1,8 @@
 //------------------------------------------------------------------------
 // Audio processor — host contract: mono/stereo buses, 32/64-bit float
 // processing, VST3 bypass (plugin-core spec). The audible chain
-// (audio-controls spec) lands with tasks 3.x.
+// (audio-controls spec) lands with tasks 3.x; all chain state will be
+// created on activation so the audio path never allocates or blocks.
 //------------------------------------------------------------------------
 #pragma once
 
@@ -24,7 +25,6 @@ public:
 	                                                  Steinberg::Vst::SpeakerArrangement* outputs,
 	                                                  Steinberg::int32 numOuts) SMTG_OVERRIDE;
 	Steinberg::tresult PLUGIN_API canProcessSampleSize (Steinberg::int32 symbolicSampleSize) SMTG_OVERRIDE;
-	Steinberg::tresult PLUGIN_API setActive (Steinberg::TBool state) SMTG_OVERRIDE;
 	Steinberg::tresult PLUGIN_API process (Steinberg::Vst::ProcessData& data) SMTG_OVERRIDE;
 	Steinberg::tresult PLUGIN_API setState (Steinberg::IBStream* state) SMTG_OVERRIDE;
 	Steinberg::tresult PLUGIN_API getState (Steinberg::IBStream* state) SMTG_OVERRIDE;

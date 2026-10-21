@@ -6,11 +6,10 @@
 //------------------------------------------------------------------------
 #pragma once
 
+#include "pluginterfaces/vst/vsttypes.h"
+
 namespace Radixhomework {
 
-enum ParamIds
-{
-	kBypassId = 1, ///< Standard bypass (kIsBypass flag); applied by the processor.
-};
+constexpr Steinberg::Vst::ParamID kBypassId = 1; ///< Standard bypass (kIsBypass).
 
 } // namespace Radixhomework
