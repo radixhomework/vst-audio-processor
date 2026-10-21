@@ -17,15 +17,15 @@
 
 ## 2. Host contract (plugin-core spec)
 
-- [ ] 2.1 Bus arrangements: declare exactly mono 1-in/1-out and stereo 2-in/2-out
+- [x] 2.1 Bus arrangements: declare exactly mono 1-in/1-out and stereo 2-in/2-out
       in processor/controller bus init and arrangement checks. Verify: validator
       passes bus checks; Cubase offers the plugin on mono and stereo tracks and
       no sidechain/surround variants.
-- [ ] 2.2 Process setup: accept 32-bit and 64-bit float streams, 44.1–192 kHz,
+- [x] 2.2 Process setup: accept 32-bit and 64-bit float streams, 44.1–192 kHz,
       any buffer size; allocate all processing state in `setActive(true)` so the
       process loop is allocation-free. Verify: validator run across formats;
       code inspection confirms no allocation/lock in the process path.
-- [ ] 2.3 Bypass: implement the standard VST3 bypass parameter with strict
+- [x] 2.3 Bypass: implement the standard VST3 bypass parameter with strict
       input→output pass-through while engaged. Verify: validator bypass check
       passes; in Cubase, engaging bypass yields sample-identical pass-through
       (A/B on a test signal).
