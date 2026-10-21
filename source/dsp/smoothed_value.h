@@ -22,7 +22,8 @@ public:
 	/// Starts settled at value (used on activation).
 	void setCurrent (float value)
 	{
-		current = target = value;
+		current = value;
+		target = value;
 		increment = 0.f;
 	}
 

@@ -38,7 +38,7 @@ inline constexpr float kMinusInftyDb = -std::numeric_limits<float>::infinity ();
 
 inline int gainNormalizedToIndex (Steinberg::Vst::ParamValue normalized)
 {
-	const int index = static_cast<int> (std::lround (normalized * kGainStepCount));
+	const auto index = static_cast<int> (std::lround (normalized * kGainStepCount));
 	return std::clamp (index, 0, kGainStepCount);
 }
 
@@ -57,7 +57,7 @@ inline float gainIndexToDb (int index)
 {
 	if (index <= 0)
 		return kMinusInftyDb;
-	return std::min (kGainMinDb + (index - 1) * kGainStepDb, kGainMaxDb);
+	return std::min (kGainMinDb + static_cast<float> (index - 1) * kGainStepDb, kGainMaxDb);
 }
 
 /// dB -> linear amplitude (-inf dB maps to 0: digital silence).

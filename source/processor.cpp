@@ -159,8 +159,8 @@ void Processor::updateParameters (Steinberg::Vst::ProcessData& data)
 
 		Steinberg::Vst::ParamValue value = 0;
 		Steinberg::int32 sampleOffset = 0;
-		const Steinberg::int32 numPoints = queue->getPointCount ();
-		if (numPoints <= 0 ||
+		if (const Steinberg::int32 numPoints = queue->getPointCount ();
+		    numPoints <= 0 ||
 		    queue->getPoint (numPoints - 1, sampleOffset, value) != Steinberg::kResultTrue)
 			continue;
 

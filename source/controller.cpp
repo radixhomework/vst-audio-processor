@@ -6,8 +6,10 @@
 #include "pluginterfaces/base/ustring.h"
 #include "public.sdk/source/vst/vstparameters.h"
 
+#include <array>
 #include <cmath>
-#include <cstdio>
+#include <format>
+#include <iterator>
 
 namespace Radixhomework {
 
@@ -34,8 +36,8 @@ class GainParameter : public Parameter
 public:
 	explicit GainParameter (Steinberg::int32 flags)
 	{
-		Steinberg::UString (info.title, USTRINGSIZE (info.title)).assign (USTRING ("Gain"));
-		Steinberg::UString (info.units, USTRINGSIZE (info.units)).assign (USTRING ("dB"));
+		Steinberg::UString (info.title, std::size (info.title)).assign (USTRING ("Gain"));
+		Steinberg::UString (info.units, std::size (info.units)).assign (USTRING ("dB"));
 
 		info.flags = flags;
 		info.id = kGainId;
@@ -46,13 +48,14 @@ public:
 
 	void toString (ParamValue value, Steinberg::Vst::String128 string) const SMTG_OVERRIDE
 	{
+		std::array<char, 32> text {};
 		const int index = gainNormalizedToIndex (value);
-		char text[32];
 		if (index == 0)
-			std::snprintf (text, sizeof (text), "-inf dB");
+			std::format_to_n (text.data (), text.size () - 1, "-inf dB");
 		else
-			std::snprintf (text, sizeof (text), "%.1f dB", gainIndexToDb (index));
-		Steinberg::UString (string, 128).fromAscii (text);
+			std::format_to_n (text.data (), text.size () - 1, "{:.1f} dB",
+			                  gainIndexToDb (index));
+		Steinberg::UString (string, 128).fromAscii (text.data ());
 	}
 };
 
@@ -64,7 +67,7 @@ class PanParameter : public Parameter
 public:
 	explicit PanParameter (Steinberg::int32 flags)
 	{
-		Steinberg::UString (info.title, USTRINGSIZE (info.title)).assign (USTRING ("Pan"));
+		Steinberg::UString (info.title, std::size (info.title)).assign (USTRING ("Pan"));
 
 		info.flags = flags;
 		info.id = kPanId;
@@ -76,15 +79,15 @@ public:
 	void toString (ParamValue value, Steinberg::Vst::String128 string) const SMTG_OVERRIDE
 	{
 		const float pan = panFromNormalized (value);
-		const int offset = static_cast<int> (std::lround (std::fabs (pan) * 100.f));
-		char text[16];
+		const auto offset = static_cast<int> (std::lround (std::fabs (pan) * 100.f));
+		std::array<char, 16> text {};
 		if (offset == 0)
-			std::snprintf (text, sizeof (text), "C");
+			std::format_to_n (text.data (), text.size () - 1, "C");
 		else if (pan < 0.f)
-			std::snprintf (text, sizeof (text), "L%d", offset);
+			std::format_to_n (text.data (), text.size () - 1, "L{}", offset);
 		else
-			std::snprintf (text, sizeof (text), "R%d", offset);
-		Steinberg::UString (string, 128).fromAscii (text);
+			std::format_to_n (text.data (), text.size () - 1, "R{}", offset);
+		Steinberg::UString (string, 128).fromAscii (text.data ());
 	}
 };
 
