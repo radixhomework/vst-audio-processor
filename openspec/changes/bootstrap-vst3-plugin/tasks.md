@@ -32,25 +32,25 @@
 
 ## 3. Parameters and DSP chain (audio-controls spec)
 
-- [ ] 3.1 Parameter set (`source/params.h` + controller): Gain with 721 steps
+- [x] 3.1 Parameter set (`source/params.h` + controller): Gain with 721 steps
       (index 0 = −∞, then −60..+12 dB in 0.1 dB steps, default 0 dB), Pan
       −100..+100 (default 0), Mono toggle (default off); mark all automatable.
       Verify: Cubase lists parameters with correct ranges/defaults; values
       editable from the generic editor.
-- [ ] 3.2 `SmoothedValue` helper: linear ramp to target over ~15 ms, reused by
+- [x] 3.2 `SmoothedValue` helper: linear ramp to target over ~15 ms, reused by
       gain and pan coefficients. Verify: exercised through the validator process
       run; single code path for continuous parameters.
-- [ ] 3.3 Gain stage: dB→linear conversion including the −∞ mute endpoint, with
+- [x] 3.3 Gain stage: dB→linear conversion including the −∞ mute endpoint, with
       per-sample smoothing. Verify: minimum = digital silence; +12 dB on a
       −12 dBFS sine measures ≈ 0 dBFS at output.
-- [ ] 3.4 Pan/balance stage: favored channel at 1.0, opposite channel
+- [x] 3.4 Pan/balance stage: favored channel at 1.0, opposite channel
       cos(|p|·π/2); stage skipped entirely on mono arrangements. Verify: hard
       left leaves L at unity and R silent; mono-instance audio unaffected by
       pan moves.
-- [ ] 3.5 Mono-sum stage: `(L+R) × 0.5` to both channels, off by default, no-op
+- [x] 3.5 Mono-sum stage: `(L+R) × 0.5` to both channels, off by default, no-op
       on mono arrangements. Verify: full-scale correlated input (L=R) produces
       no clip with mono engaged; distinct L/R fold to identical outputs.
-- [ ] 3.6 Chain wiring: fixed order mono-sum → gain → pan, parameter queue
+- [x] 3.6 Chain wiring: fixed order mono-sum → gain → pan, parameter queue
       handled per block in process. Verify: combined scenario — mono engaged +
       gain −6 dB on full-scale correlated input yields −6 dBFS on both outputs.
 

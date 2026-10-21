@@ -78,11 +78,17 @@ Steinberg::tresult PLUGIN_API Processor::canProcessSampleSize (Steinberg::int32 
 }
 
 //------------------------------------------------------------------------
-// All processing state must exist before the first process call, so the
-// audio path never allocates or blocks (plugin-core spec, real-time
-// safety). There is nothing dynamic to allocate yet: the placeholder path
-// works purely on the host-provided buffers; the chain state of tasks 3.x
-// will be created on activation.
+// Activation fixes the chain's ramp length from the sample rate and
+// settles the smoothers at the current targets, so the audio path never
+// allocates or blocks (plugin-core spec, real-time safety).
+Steinberg::tresult PLUGIN_API Processor::setActive (Steinberg::TBool state)
+{
+	if (state)
+		chain.prepare (processSetup.sampleRate, linearGainFromNormalized (lastGainNormalized),
+		               panFromNormalized (lastPanNormalized), monoSumActive);
+	return AudioEffect::setActive (state);
+}
+
 //------------------------------------------------------------------------
 namespace {
 
@@ -133,22 +139,13 @@ void passThrough (Steinberg::Vst::ProcessData& data)
 		clearBus (data.outputs[0], data.numSamples, data.symbolicSampleSize);
 }
 
-//------------------------------------------------------------------------
-// The processing chain slot: mono-sum -> gain -> pan (tasks 3.x). Until
-// the chain lands (task 3.6) this is the placeholder pass-through.
-void processChain (Steinberg::Vst::ProcessData& data)
-{
-	passThrough (data);
-}
-
 } // namespace
 
 //------------------------------------------------------------------------
-// Host parameter changes: track the standard bypass parameter. The last
-// point of the block wins; the placeholder chain has nothing to gate
-// sample-accurately, and the real chain (task 3.6) will smooth at the
-// transition like any parameter.
-void Processor::updateBypassState (Steinberg::Vst::ProcessData& data)
+// Host parameter changes: the last point of each queue wins; continuous
+// parameters ramp in the chain (~15 ms), so per-block granularity is
+// sufficient (design D4).
+void Processor::updateParameters (Steinberg::Vst::ProcessData& data)
 {
 	Steinberg::Vst::IParameterChanges* paramChanges = data.inputParameterChanges;
 	if (!paramChanges)
@@ -157,15 +154,41 @@ void Processor::updateBypassState (Steinberg::Vst::ProcessData& data)
 	for (Steinberg::int32 i = 0; i < paramChanges->getParameterCount (); ++i)
 	{
 		Steinberg::Vst::IParamValueQueue* queue = paramChanges->getParameterData (i);
-		if (!queue || queue->getParameterId () != kBypassId)
+		if (!queue)
 			continue;
 
 		Steinberg::Vst::ParamValue value = 0;
 		Steinberg::int32 sampleOffset = 0;
 		const Steinberg::int32 numPoints = queue->getPointCount ();
-		if (numPoints > 0 &&
-		    queue->getPoint (numPoints - 1, sampleOffset, value) == Steinberg::kResultTrue)
-			bypassActive = (value != 0.);
+		if (numPoints <= 0 ||
+		    queue->getPoint (numPoints - 1, sampleOffset, value) != Steinberg::kResultTrue)
+			continue;
+
+		switch (queue->getParameterId ())
+		{
+			case kBypassId:
+				bypassActive = (value != 0.);
+				break;
+
+			case kGainId:
+				lastGainNormalized = value;
+				chain.setGainTarget (linearGainFromNormalized (value));
+				break;
+
+			case kPanId:
+				lastPanNormalized = value;
+				chain.setPanTarget (panFromNormalized (value));
+				break;
+
+			case kMonoId:
+				lastMonoNormalized = value;
+				monoSumActive = (value != 0.);
+				chain.setMonoSumEnabled (monoSumActive);
+				break;
+
+			default:
+				break;
+		}
 	}
 }
 
@@ -175,7 +198,7 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 	// Parameter queues are handled even for zero-sample flush calls
 	// (numSamples == 0, no buffers): hosts use those to advance parameter
 	// state, and saved state must reflect it.
-	updateBypassState (data);
+	updateParameters (data);
 
 	if (data.numSamples <= 0 || data.numOutputs <= 0)
 		return Steinberg::kResultTrue;
@@ -189,25 +212,43 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 		// Bypass (plugin-core spec): input passed to the output unmodified;
 		// gain/pan/mono cannot affect the audio while engaged.
 		passThrough (data);
+		return Steinberg::kResultTrue;
 	}
+
+	// Processing chain (audio-controls spec): work on the copied input in
+	// the output buffers, then run the fixed-order stages. No input bus
+	// connected -> the chain runs on (and keeps emitting) silence.
+	if (data.numInputs > 0)
+		copyBus (data.inputs[0], data.outputs[0], data.numSamples, data.symbolicSampleSize);
 	else
-	{
-		processChain (data);
-	}
+		clearBus (data.outputs[0], data.numSamples, data.symbolicSampleSize);
+	chain.process (data.outputs[0], data.numSamples, data.symbolicSampleSize);
 	return Steinberg::kResultTrue;
 }
 
 //------------------------------------------------------------------------
-// Persistent state: the bypass flag must survive host project save/load
-// (the validator checks controller sync through this round-trip; task 3.x
-// extends the stream with the audio parameters).
+// Persistent state: bypass, gain, pan, mono as normalized floats. The
+// layout is shared with Controller::setComponentState; task 3.x features
+// extend it here first.
 Steinberg::tresult PLUGIN_API Processor::setState (Steinberg::IBStream* state)
 {
 	Steinberg::IBStreamer streamer (state, kLittleEndian);
 	float savedBypass = 0.f;
-	if (!streamer.readFloat (savedBypass))
+	float savedGain = 0.f;
+	float savedPan = 0.f;
+	float savedMono = 0.f;
+	if (!streamer.readFloat (savedBypass) || !streamer.readFloat (savedGain) ||
+	    !streamer.readFloat (savedPan) || !streamer.readFloat (savedMono))
 		return Steinberg::kResultFalse;
+
 	bypassActive = (savedBypass != 0.f);
+	lastGainNormalized = savedGain;
+	lastPanNormalized = savedPan;
+	monoSumActive = (savedMono != 0.f);
+
+	chain.setGainTarget (linearGainFromNormalized (lastGainNormalized));
+	chain.setPanTarget (panFromNormalized (lastPanNormalized));
+	chain.setMonoSumEnabled (monoSumActive);
 	return Steinberg::kResultTrue;
 }
 
@@ -216,6 +257,9 @@ Steinberg::tresult PLUGIN_API Processor::getState (Steinberg::IBStream* state)
 {
 	Steinberg::IBStreamer streamer (state, kLittleEndian);
 	streamer.writeFloat (bypassActive ? 1.f : 0.f);
+	streamer.writeFloat (static_cast<float> (lastGainNormalized));
+	streamer.writeFloat (static_cast<float> (lastPanNormalized));
+	streamer.writeFloat (static_cast<float> (lastMonoNormalized));
 	return Steinberg::kResultTrue;
 }
 
