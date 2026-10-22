@@ -11,6 +11,7 @@
 #include "pluginterfaces/vst/ivstaudioprocessor.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <span>
@@ -21,36 +22,31 @@ constexpr int kMaxMeterChannels = 2;
 
 //------------------------------------------------------------------------
 // Lock-free shared state: audio thread writes levels / latches clip,
-// UI thread reads levels / clears clip. Relaxed ordering suffices — the
-// values are display-only and the peak-hold logic lives view-side.
+// UI thread reads levels / clears clip. Plain atomic loads/stores are
+// enough — the values are display-only and the peak-hold logic lives
+// view-side.
 class MeterState
 {
 public:
-	void setRms (int channel, float value)
-	{
-		rms[channel].store (value, std::memory_order_relaxed);
-	}
+	void setRms (int channel, float value) { rms[channel].store (value); }
 
-	float getRms (int channel) const { return rms[channel].load (std::memory_order_relaxed); }
+	float getRms (int channel) const { return rms[channel].load (); }
 
-	void setPeak (int channel, float value)
-	{
-		peak[channel].store (value, std::memory_order_relaxed);
-	}
+	void setPeak (int channel, float value) { peak[channel].store (value); }
 
-	float getPeak (int channel) const { return peak[channel].load (std::memory_order_relaxed); }
+	float getPeak (int channel) const { return peak[channel].load (); }
 
-	void latchClip (int channel) { clip[channel].store (true, std::memory_order_relaxed); }
+	void latchClip (int channel) { clip[channel].store (true); }
 
-	bool getClip (int channel) const { return clip[channel].load (std::memory_order_relaxed); }
+	bool getClip (int channel) const { return clip[channel].load (); }
 
 	/// Clear path the UI calls when the user clicks a lit clip indicator.
-	void clearClip (int channel) { clip[channel].store (false, std::memory_order_relaxed); }
+	void clearClip (int channel) { clip[channel].store (false); }
 
 private:
-	std::atomic<float> rms[kMaxMeterChannels] {};
-	std::atomic<float> peak[kMaxMeterChannels] {};
-	std::atomic<bool> clip[kMaxMeterChannels] {};
+	std::array<std::atomic<float>, kMaxMeterChannels> rms {};
+	std::array<std::atomic<float>, kMaxMeterChannels> peak {};
+	std::array<std::atomic<bool>, kMaxMeterChannels> clip {};
 };
 
 //------------------------------------------------------------------------
@@ -125,8 +121,8 @@ private:
 	static constexpr float kReleaseTimeSeconds = 0.3f;
 
 	float releaseSamples {1.f};
-	float smoothedRms[kMaxMeterChannels] {};
-	float smoothedPeak[kMaxMeterChannels] {};
+	std::array<float, kMaxMeterChannels> smoothedRms {};
+	std::array<float, kMaxMeterChannels> smoothedPeak {};
 };
 
 } // namespace Radixhomework
