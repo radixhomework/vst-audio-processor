@@ -66,18 +66,18 @@
 
 ## 5. Editor UI (plugin-ui spec)
 
-- [ ] 5.1 Editor skeleton: controller `createEditor` building a fixed
+- [x] 5.1 Editor skeleton: controller `createEditor` building a fixed
       ~420×220 px panel programmatically in VSTGUI; gain/pan knobs and buttons
       bound via parameter attachments. Verify: editor opens in Cubase; knob
       moves are recorded by host automation.
-- [ ] 5.2 Knob readouts: gain text in dB showing "−∞ dB" at minimum; pan text
+- [x] 5.2 Knob readouts: gain text in dB showing "−∞ dB" at minimum; pan text
       as C / L\<n\> / R\<n\>. Verify: readouts track knob drags and automation
       playback.
-- [ ] 5.3 Mono and bypass buttons: mono LED toggle; bypass button state synced
+- [x] 5.3 Mono and bypass buttons: mono LED toggle; bypass button state synced
       with the host bypass parameter in both directions. Verify: clicking mono
       folds the image and lights the button; engaging bypass from Cubase's
       control lights the panel button.
-- [ ] 5.4 `MeterView` custom widget: per-channel RMS fill + peak line + falling
+- [x] 5.4 `MeterView` custom widget: per-channel RMS fill + peak line + falling
       peak-hold (~2 s) against a dB scale (0/−6/−12/−24/−48), polling
       `MeterState` on a ~30 ms timer; clickable clip LEDs above the bars.
       Verify: steady −10 dBFS sine reads ≈ −10 on both bars; hold marker holds
@@ -85,10 +85,10 @@
 
 ## 6. Documentation and quality gates
 
-- [ ] 6.1 Fill `PRODUCT.md`: what the product is, target user, Round-1 scope
+- [x] 6.1 Fill `PRODUCT.md`: what the product is, target user, Round-1 scope
       and feature table, R2–R5 roadmap, constraints (GPL-3, VST3/Cubase,
       Windows-first). Verify: content matches the implemented behavior.
-- [ ] 6.2 Fill `ARCHITECTURE.md`: components, audio/UI data flow, key decisions
+- [x] 6.2 Fill `ARCHITECTURE.md`: components, audio/UI data flow, key decisions
       (D1–D7 summarized), build/run commands, CI and quality-gate setup.
       Verify: the documented build commands reproduce a working build from a
       clean clone.
@@ -103,6 +103,6 @@
       still open: provision the SonarCloud project and token, wire CodeQL,
       and state the final pipeline status in the PR description. Verify:
       pipeline state (or the blocked note) stated in the PR description.
-- [ ] 6.5 Add `THIRD-PARTY-NOTICES.md` containing the VST3 SDK MIT license
+- [x] 6.5 Add `THIRD-PARTY-NOTICES.md` containing the VST3 SDK MIT license
       text and the VSTGUI BSD-3 notice, referenced from the README. Verify:
       the file is present and referenced before the first release.

@@ -13,4 +13,4 @@ CLAUDE.local.md
 AGENTS.local.md
 
 # --- build artifacts ---
-build/
+build*/
