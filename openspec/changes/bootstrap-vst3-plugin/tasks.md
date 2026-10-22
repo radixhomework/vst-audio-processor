@@ -97,7 +97,7 @@
       parameter values, click-free gain automation, pan behavior, mono-sum,
       bypass sync, meter tracking, clip reset). Verify: checklist results
       recorded in the PR description.
-- [ ] 6.4 Quality-gate wiring per AGENTS.md: Sonar pipeline wired with the CI
+- [x] 6.4 Quality-gate wiring per AGENTS.md: Sonar pipeline wired with the CI
       (Release build under Sonar's build wrapper + SonarCloud scan step gated
       on the `SONAR_TOKEN` secret, `sonar-project.properties` at repo root);
       still open: provision the SonarCloud project and token, wire CodeQL,
