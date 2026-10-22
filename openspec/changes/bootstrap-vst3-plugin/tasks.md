@@ -56,11 +56,11 @@
 
 ## 4. Metering (metering spec)
 
-- [ ] 4.1 `MeterState` (atomics for L/R levels + clip flags) and per-block
+- [x] 4.1 `MeterState` (atomics for L/R levels + clip flags) and per-block
       peak/RMS measurement with display ballistics, tapped post-pan (including
       during bypass). Verify: levels respond to gain changes during a validator
       run / debug host; no locks or allocations introduced in the process path.
-- [ ] 4.2 Clip detection: latch when |sample| ≥ 1.0 per output channel; provide
+- [x] 4.2 Clip detection: latch when |sample| ≥ 1.0 per output channel; provide
       the atomic clear path the UI will call. Verify: latch engages on a
       full-scale tone and stays latched until cleared (cleared via UI in 5.4).
 

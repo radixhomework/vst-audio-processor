@@ -84,8 +84,11 @@ Steinberg::tresult PLUGIN_API Processor::canProcessSampleSize (Steinberg::int32 
 Steinberg::tresult PLUGIN_API Processor::setActive (Steinberg::TBool state)
 {
 	if (state)
+	{
 		chain.prepare (processSetup.sampleRate, linearGainFromNormalized (lastGainNormalized),
 		               panFromNormalized (lastPanNormalized), monoSumActive);
+		metering.prepare (processSetup.sampleRate);
+	}
 	return AudioEffect::setActive (state);
 }
 
@@ -210,19 +213,24 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 	if (bypassActive)
 	{
 		// Bypass (plugin-core spec): input passed to the output unmodified;
-		// gain/pan/mono cannot affect the audio while engaged.
+		// gain/pan/mono cannot affect the audio while engaged. Metering
+		// keeps measuring — the output is the input then.
 		passThrough (data);
-		return Steinberg::kResultTrue;
+	}
+	else
+	{
+		// Processing chain (audio-controls spec): work on the copied input
+		// in the output buffers, then run the fixed-order stages. No input
+		// bus connected -> the chain runs on (and keeps emitting) silence.
+		if (data.numInputs > 0)
+			copyBus (data.inputs[0], data.outputs[0], data.numSamples, data.symbolicSampleSize);
+		else
+			clearBus (data.outputs[0], data.numSamples, data.symbolicSampleSize);
+		chain.process (data.outputs[0], data.numSamples, data.symbolicSampleSize);
 	}
 
-	// Processing chain (audio-controls spec): work on the copied input in
-	// the output buffers, then run the fixed-order stages. No input bus
-	// connected -> the chain runs on (and keeps emitting) silence.
-	if (data.numInputs > 0)
-		copyBus (data.inputs[0], data.outputs[0], data.numSamples, data.symbolicSampleSize);
-	else
-		clearBus (data.outputs[0], data.numSamples, data.symbolicSampleSize);
-	chain.process (data.outputs[0], data.numSamples, data.symbolicSampleSize);
+	// Meter tap: post-pan final output on every path (metering spec).
+	metering.measure (data.outputs[0], data.numSamples, data.symbolicSampleSize, meterState);
 	return Steinberg::kResultTrue;
 }
 

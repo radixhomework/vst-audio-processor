@@ -8,6 +8,7 @@
 #pragma once
 
 #include "dsp/chain.h"
+#include "dsp/meter_state.h"
 #include "params.h"
 
 #include "public.sdk/source/vst/vstaudioeffect.h"
@@ -40,6 +41,11 @@ private:
 	void updateParameters (Steinberg::Vst::ProcessData& data);
 
 	DspChain chain;
+	Metering metering;
+
+	// Post-pan output levels (bypass included), published lock-free to the
+	// UI; the editor gains access in task 5.x.
+	MeterState meterState;
 
 	bool bypassActive {false};
 	bool monoSumActive {false};
