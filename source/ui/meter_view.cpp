@@ -4,8 +4,10 @@
 
 #include "vstgui/lib/cvstguitimer.h"
 
+#include <array>
 #include <chrono>
 #include <cmath>
+#include <format>
 
 using namespace VSTGUI;
 
@@ -40,7 +42,8 @@ const int kScaleMarksDb[] = {0, -6, -12, -24, -48};
 MeterView::MeterView (const CRect& size, Controller& ctrl, int ch)
 : CView (size), controller (ctrl), channel (ch)
 {
-	setWantsFocus (false);
+	// Constructor call: explicitly the CView implementation.
+	CView::setWantsFocus (false);
 	// ~30 ms poll (plugin-ui spec).
 	timer = makeOwned<CVSTGUITimer> (
 	    [this] (CVSTGUITimer*) {
@@ -100,7 +103,7 @@ void MeterView::draw (CDrawContext* context)
 
 	// Peak-hold ballistics (view-side): hold the highest peak ~2 s, then
 	// fall toward the current level.
-	const float tickSeconds = 0.03;
+	const float tickSeconds = 0.03f;
 	if (peak >= holdLevel || !holdActive)
 	{
 		holdLevel = peak;
@@ -147,9 +150,9 @@ void MeterView::draw (CDrawContext* context)
 		const float linear = std::pow (10.f, static_cast<float> (db) / 20.f);
 		const CCoord y = levelToY (linear);
 		context->drawLine (CPoint (bar.right, y), CPoint (bar.right + 3, y));
-		char label[8];
-		std::snprintf (label, sizeof (label), "%d", db);
-		context->drawString (label, CPoint (bar.right + 5, y + 3));
+		std::array<char, 8> label {};
+		std::format_to_n (label.data (), label.size () - 1, "{}", db);
+		context->drawString (label.data (), CPoint (bar.right + 5, y + 3));
 	}
 
 	setDirty (false);
@@ -158,15 +161,13 @@ void MeterView::draw (CDrawContext* context)
 //------------------------------------------------------------------------
 CMouseEventResult MeterView::onMouseDown (CPoint& where, const CButtonState& buttons)
 {
-	if (buttons.isLeftButton ())
+	// Clicking the clip LED resets the latched flag (completes task 4.2);
+	// where is in frame coordinates, as is getViewSize().
+	if (buttons.isLeftButton () && ledRect ().pointInside (where) &&
+	    controller.meterCache ().getClip (channel))
 	{
-		// Clicking the clip LED resets the latched flag (completes task 4.2).
-		// where is in frame coordinates, as is getViewSize().
-		if (ledRect ().pointInside (where) && controller.meterCache ().getClip (channel))
-		{
-			controller.requestClipReset (channel);
-			invalid ();
-		}
+		controller.requestClipReset (channel);
+		invalid ();
 	}
 	return kMouseDownEventHandledButDontNeedMovedOrUpEvents;
 }

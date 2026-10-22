@@ -4,8 +4,9 @@
 #include "meter_view.h"
 #include "params.h"
 
+#include <array>
 #include <cmath>
-#include <cstdio>
+#include <format>
 
 using namespace VSTGUI;
 
@@ -35,7 +36,8 @@ public:
 	VectorKnob (const CRect& size, IControlListener* listener, int32_t tag)
 	: CControl (size, listener, tag)
 	{
-		setWantsFocus (false);
+		// Constructor call: explicitly the CView implementation.
+		CView::setWantsFocus (false);
 	}
 
 	void draw (CDrawContext* context) override
@@ -55,16 +57,18 @@ public:
 		// Track arc.
 		context->setFrameColor (knobTrackColor);
 		context->setLineWidth (3.);
-		context->drawArc (arcRect, kKnobStartAngleDeg, kKnobStartAngleDeg + kKnobRangeDeg);
+		context->drawArc (arcRect, static_cast<float> (kKnobStartAngleDeg),
+		                  static_cast<float> (kKnobStartAngleDeg + kKnobRangeDeg));
 
 		// Value arc.
 		const double valueAngle =
 		    kKnobStartAngleDeg + kKnobRangeDeg * static_cast<double> (getValue ());
 		context->setFrameColor (knobValueColor);
-		context->drawArc (arcRect, kKnobStartAngleDeg, valueAngle);
+		context->drawArc (arcRect, static_cast<float> (kKnobStartAngleDeg),
+		                  static_cast<float> (valueAngle));
 
 		// Pointer.
-		const double radians = valueAngle * M_PI / 180.;
+		const double radians = valueAngle * 3.14159265358979323846 / 180.;
 		const CPoint direction (std::cos (radians), -std::sin (radians));
 		context->setFrameColor (knobPointerColor);
 		context->setLineWidth (2.);
@@ -129,10 +133,13 @@ private:
 };
 
 //------------------------------------------------------------------------
+// VSTGUI containers own their views through reference counting once
+// addView hands the pointer over; raw new is the framework's idiom
+// (cpp:S5025 accepted here).
 CTextLabel* addLabel (CViewContainer* container, const CRect& rect, const char* text,
                       CHoriTxtAlign alignment = kCenterText)
 {
-	auto* label = new CTextLabel (rect, text);
+	auto* label = new CTextLabel (rect, text); // NOSONAR
 	label->setTransparency (true);
 	label->setFontColor (textColor);
 	label->setHoriAlign (alignment);
@@ -155,10 +162,11 @@ Controller* Editor::pluginController ()
 }
 
 //------------------------------------------------------------------------
-bool PLUGIN_API Editor::open (void* parent, const PlatformType& platformType)
+// void* parent: the native window handle, per the IPlugView contract.
+bool PLUGIN_API Editor::open (void* parent, const PlatformType& platformType) // NOSONAR
 {
 	const CRect panelRect (0, 0, 420, 220);
-	frame = new CFrame (panelRect, this);
+	frame = new CFrame (panelRect, this); // NOSONAR
 	frame->setBackgroundColor (panelColor);
 	buildControls ();
 	frame->open (parent, platformType);
@@ -189,7 +197,7 @@ void Editor::buildControls ()
 {
 	// --- Gain knob + readout ------------------------------------------
 	addLabel (frame, CRect (20, 10, 110, 26), "Gain");
-	auto* gainKnob = new VectorKnob (CRect (30, 32, 100, 102), this, kGainId);
+	auto* gainKnob = new VectorKnob (CRect (30, 32, 100, 102), this, kGainId); // NOSONAR
 	gainKnob->setDefaultValue (static_cast<float> (gainDefaultNormalized ()));
 	gainKnob->setValue (gainKnob->getDefaultValue ());
 	frame->addView (gainKnob);
@@ -198,7 +206,7 @@ void Editor::buildControls ()
 
 	// --- Pan knob + readout ---------------------------------------------
 	addLabel (frame, CRect (130, 10, 220, 26), "Pan");
-	auto* panKnob = new VectorKnob (CRect (140, 32, 210, 102), this, kPanId);
+	auto* panKnob = new VectorKnob (CRect (140, 32, 210, 102), this, kPanId); // NOSONAR
 	panKnob->setDefaultValue (static_cast<float> (panDefaultNormalized ()));
 	panKnob->setValue (panKnob->getDefaultValue ());
 	frame->addView (panKnob);
@@ -206,19 +214,18 @@ void Editor::buildControls ()
 	updatePanReadout (panKnob);
 
 	// --- Mono and Bypass buttons ----------------------------------------
-	auto* monoButton =
-	    new CTextButton (CRect (240, 36, 320, 62), this, kMonoId, "Mono");
+	auto* monoButton = new CTextButton (CRect (240, 36, 320, 62), this, kMonoId, "Mono"); // NOSONAR
 	monoButton->setStyle (CTextButton::kOnOffStyle);
 	frame->addView (monoButton);
 
 	auto* bypassButton =
-	    new CTextButton (CRect (240, 74, 320, 100), this, kBypassId, "Bypass");
+	    new CTextButton (CRect (240, 74, 320, 100), this, kBypassId, "Bypass"); // NOSONAR
 	bypassButton->setStyle (CTextButton::kOnOffStyle);
 	frame->addView (bypassButton);
 
 	// --- L/R meters with clip LEDs --------------------------------------
-	frame->addView (new MeterView (CRect (342, 24, 358, 200), *pluginController (), 0));
-	frame->addView (new MeterView (CRect (360, 24, 376, 200), *pluginController (), 1));
+	frame->addView (new MeterView (CRect (342, 24, 358, 200), *pluginController (), 0)); // NOSONAR
+	frame->addView (new MeterView (CRect (360, 24, 376, 200), *pluginController (), 1)); // NOSONAR
 
 	syncFromParameters ();
 }
@@ -229,10 +236,12 @@ void Editor::valueChanged (CControl* control)
 	// Knob/button moves go through the host so they are recorded as
 	// automation (plugin-ui spec). The begin/end edit brackets arrive via
 	// controlBeginEdit/controlEndEdit.
-	auto* editController = getController ();
-	if (editController)
+	if (auto* editController = getController ();
+	    editController != nullptr)
+	{
 		editController->performEdit (static_cast<Steinberg::Vst::ParamID> (control->getTag ()),
 		                             control->getValue ());
+	}
 
 	if (control->getTag () == kGainId)
 		updateGainReadout (control);
@@ -243,14 +252,14 @@ void Editor::valueChanged (CControl* control)
 //------------------------------------------------------------------------
 void Editor::controlBeginEdit (CControl* control)
 {
-	if (auto* editController = getController ())
+	if (auto* editController = getController (); editController != nullptr)
 		editController->beginEdit (static_cast<Steinberg::Vst::ParamID> (control->getTag ()));
 }
 
 //------------------------------------------------------------------------
 void Editor::controlEndEdit (CControl* control)
 {
-	if (auto* editController = getController ())
+	if (auto* editController = getController (); editController != nullptr)
 		editController->endEdit (static_cast<Steinberg::Vst::ParamID> (control->getTag ()));
 }
 
@@ -261,7 +270,7 @@ void Editor::syncFromParameters ()
 	if (!editController)
 		return;
 
-	auto update = [&] (CView* view) {
+	auto update = [this, editController] (CView* view) {
 		auto* control = dynamic_cast<CControl*> (view);
 		if (!control || control->getTag () < 0 || control->isEditing ())
 			return;
@@ -280,44 +289,42 @@ void Editor::syncFromParameters ()
 
 	// Knobs and buttons (meters poll their own timer).
 	frame->forEachChild ([&] (CView* view) {
-		if (auto* control = dynamic_cast<CControl*> (view))
-		{
-			if (control->getTag () == kGainId || control->getTag () == kPanId ||
-			    control->getTag () == kMonoId || control->getTag () == kBypassId)
-				update (control);
-		}
+		auto* control = dynamic_cast<CControl*> (view);
+		if (control && (control->getTag () == kGainId || control->getTag () == kPanId ||
+		                control->getTag () == kMonoId || control->getTag () == kBypassId))
+			update (view);
 	});
 }
 
 //------------------------------------------------------------------------
-void Editor::updateGainReadout (CControl* knob)
+void Editor::updateGainReadout (const CControl* knob)
 {
 	if (!gainReadout)
 		return;
 	const int index = gainNormalizedToIndex (knob->getValue ());
-	char text[32];
+	std::array<char, 32> text {};
 	if (index == 0)
-		std::snprintf (text, sizeof (text), "\xE2\x88\x9E\xE2\x88\x92 dB"); // -infinity dB
+		std::format_to_n (text.data (), text.size () - 1, "-\xE2\x88\x9E dB");
 	else
-		std::snprintf (text, sizeof (text), "%.1f dB", gainIndexToDb (index));
-	gainReadout->setText (text);
+		std::format_to_n (text.data (), text.size () - 1, "{:.1f} dB", gainIndexToDb (index));
+	gainReadout->setText (text.data ());
 }
 
 //------------------------------------------------------------------------
-void Editor::updatePanReadout (CControl* knob)
+void Editor::updatePanReadout (const CControl* knob)
 {
 	if (!panReadout)
 		return;
 	const float pan = panFromNormalized (knob->getValue ());
 	const auto offset = static_cast<int> (std::lround (std::fabs (pan) * 100.f));
-	char text[16];
+	std::array<char, 16> text {};
 	if (offset == 0)
-		std::snprintf (text, sizeof (text), "C");
+		std::format_to_n (text.data (), text.size () - 1, "C");
 	else if (pan < 0.f)
-		std::snprintf (text, sizeof (text), "L%d", offset);
+		std::format_to_n (text.data (), text.size () - 1, "L{}", offset);
 	else
-		std::snprintf (text, sizeof (text), "R%d", offset);
-	panReadout->setText (text);
+		std::format_to_n (text.data (), text.size () - 1, "R{}", offset);
+	panReadout->setText (text.data ());
 }
 
 } // namespace Radixhomework

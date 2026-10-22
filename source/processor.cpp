@@ -268,8 +268,8 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 
 	// Publish a meter snapshot to the controller (design D5); lock-free,
 	// and a no-op unless the queue is open.
-	auto block = meterExchange.getCurrentOrNewBlock ();
-	if (block.blockID != Steinberg::Vst::InvalidDataExchangeBlockID &&
+	if (auto block = meterExchange.getCurrentOrNewBlock ();
+	    block.blockID != Steinberg::Vst::InvalidDataExchangeBlockID &&
 	    block.size >= sizeof (MeterPacket))
 	{
 		auto& packet = *static_cast<MeterPacket*> (block.data);

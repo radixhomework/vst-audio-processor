@@ -57,8 +57,8 @@ private:
 // data exchange (design D5/D6): the lock-free audio-to-UI channel.
 struct MeterPacket
 {
-	float rms[kMaxMeterChannels];
-	float peak[kMaxMeterChannels];
+	std::array<float, kMaxMeterChannels> rms;
+	std::array<float, kMaxMeterChannels> peak;
 	Steinberg::uint32 clipFlags; ///< one bit per channel
 };
 

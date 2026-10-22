@@ -154,7 +154,7 @@ Steinberg::tresult PLUGIN_API Controller::notify (Steinberg::Vst::IMessage* mess
 Steinberg::IPlugView* PLUGIN_API Controller::createView (Steinberg::FIDString name)
 {
 	if (name && Steinberg::FIDStringsEqual (name, Steinberg::Vst::ViewType::kEditor))
-		return new Editor (this);
+		return new Editor (this); // NOSONAR: IPlugView ownership transfers to the host
 	return nullptr;
 }
 
@@ -171,6 +171,7 @@ void PLUGIN_API Controller::queueOpened (Steinberg::Vst::DataExchangeUserContext
 //------------------------------------------------------------------------
 void PLUGIN_API Controller::queueClosed (Steinberg::Vst::DataExchangeUserContextID /*userContextID*/)
 {
+	// Nothing to release: the cache is updated in place per packet.
 }
 
 //------------------------------------------------------------------------

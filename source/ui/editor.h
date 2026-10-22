@@ -16,7 +16,9 @@ namespace Radixhomework {
 
 class Controller;
 
-class Editor : public Steinberg::Vst::VSTGUIEditor, public VSTGUI::IControlListener
+// The depth is fixed by the SDK/VSTGUI base classes (VSTGUIEditor ->
+// EditorView -> ...), same as any VSTGUI-based editor (cpp:S110 accepted).
+class Editor : public Steinberg::Vst::VSTGUIEditor, public VSTGUI::IControlListener // NOSONAR
 {
 public:
 	explicit Editor (Steinberg::Vst::EditController* controller);
@@ -36,8 +38,8 @@ private:
 	// the user is dragging that control).
 	void syncFromParameters ();
 	// Refreshes the gain/pan readout labels for the given values.
-	void updateGainReadout (VSTGUI::CControl* knob);
-	void updatePanReadout (VSTGUI::CControl* knob);
+	void updateGainReadout (const VSTGUI::CControl* knob);
+	void updatePanReadout (const VSTGUI::CControl* knob);
 
 	Controller* pluginController ();
 
