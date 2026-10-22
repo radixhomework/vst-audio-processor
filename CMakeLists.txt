@@ -59,11 +59,18 @@ smtg_add_vst3plugin(AudioProcessor
         source/factory.cpp
         source/processor.cpp
         source/controller.cpp
+        source/ui/editor.cpp
+        source/ui/meter_view.cpp
+        # Windows module entry (DllMain, moduleHandle) - required once
+        # vstgui_support references the module instance handle.
+        ${VST3SDK_ROOT}/public.sdk/source/main/dllmain.cpp
 )
 
 # smtg_add_vst3plugin creates the module target but does not link the SDK
-# libraries (see the SDK's own example CMakeLists).
-target_link_libraries(AudioProcessor PRIVATE sdk)
+# libraries (see the SDK's own example CMakeLists): sdk for the processor/
+# controller core, vstgui_support for the editor.
+target_link_libraries(AudioProcessor PRIVATE sdk vstgui_support)
+target_include_directories(AudioProcessor PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
 
 set_target_properties(AudioProcessor PROPERTIES
     CXX_STANDARD 20

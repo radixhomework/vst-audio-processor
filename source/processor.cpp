@@ -43,6 +43,37 @@ Steinberg::tresult PLUGIN_API Processor::initialize (Steinberg::FUnknown* contex
 }
 
 //------------------------------------------------------------------------
+// Connection: the meter stream follows the processor-controller
+// connection; blocks are only exchanged while both sides are connected.
+Steinberg::tresult PLUGIN_API Processor::connect (Steinberg::Vst::IConnectionPoint* other)
+{
+	const Steinberg::tresult result = AudioEffect::connect (other);
+	meterExchange.onConnect (other, getHostContext ());
+	return result;
+}
+
+//------------------------------------------------------------------------
+Steinberg::tresult PLUGIN_API Processor::disconnect (Steinberg::Vst::IConnectionPoint* other)
+{
+	meterExchange.onDisconnect (other);
+	return AudioEffect::disconnect (other);
+}
+
+//------------------------------------------------------------------------
+Steinberg::tresult PLUGIN_API Processor::notify (Steinberg::Vst::IMessage* message)
+{
+	if (message && message->getMessageID () &&
+	    strcmp (message->getMessageID (), "Meter/ResetClip") == 0)
+	{
+		// UI clip-LED click: clear the latched flags (task 4.2 reset path).
+		for (int ch = 0; ch < kMaxMeterChannels; ++ch)
+			meterState.clearClip (ch);
+		return Steinberg::kResultTrue;
+	}
+	return AudioEffect::notify (message);
+}
+
+//------------------------------------------------------------------------
 // Bus contract (plugin-core spec): exactly mono 1-in/1-out or stereo
 // 2-in/2-out. Anything else — other channel counts, mismatched in/out
 // arrangements, or extra (sidechain) buses — is rejected, so hosts never
@@ -88,7 +119,10 @@ Steinberg::tresult PLUGIN_API Processor::setActive (Steinberg::TBool state)
 		chain.prepare (processSetup.sampleRate, linearGainFromNormalized (lastGainNormalized),
 		               panFromNormalized (lastPanNormalized), monoSumActive);
 		metering.prepare (processSetup.sampleRate);
+		meterExchange.onActivate (processSetup);
 	}
+	else
+		meterExchange.onDeactivate ();
 	return AudioEffect::setActive (state);
 }
 
@@ -231,6 +265,25 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 
 	// Meter tap: post-pan final output on every path (metering spec).
 	metering.measure (data.outputs[0], data.numSamples, data.symbolicSampleSize, meterState);
+
+	// Publish a meter snapshot to the controller (design D5); lock-free,
+	// and a no-op unless the queue is open.
+	auto block = meterExchange.getCurrentOrNewBlock ();
+	if (block.blockID != Steinberg::Vst::InvalidDataExchangeBlockID &&
+	    block.size >= sizeof (MeterPacket))
+	{
+		auto& packet = *static_cast<MeterPacket*> (block.data);
+		for (int ch = 0; ch < kMaxMeterChannels; ++ch)
+		{
+			packet.rms[ch] = meterState.getRms (ch);
+			packet.peak[ch] = meterState.getPeak (ch);
+			if (meterState.getClip (ch))
+				packet.clipFlags |= (1u << ch);
+			else
+				packet.clipFlags &= ~(1u << ch);
+		}
+		meterExchange.sendCurrentBlock ();
+	}
 	return Steinberg::kResultTrue;
 }
 

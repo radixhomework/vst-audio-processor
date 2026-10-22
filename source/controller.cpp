@@ -1,6 +1,7 @@
 #include "controller.h"
 
 #include "params.h"
+#include "ui/editor.h"
 
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/base/ustring.h"
@@ -8,6 +9,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstring>
 #include <format>
 #include <iterator>
 
@@ -138,6 +140,72 @@ Steinberg::tresult PLUGIN_API Controller::setComponentState (Steinberg::IBStream
 	setParamNormalized (kPanId, savedPan);
 	setParamNormalized (kMonoId, savedMono != 0.f ? 1. : 0.);
 	return Steinberg::kResultTrue;
+}
+
+//------------------------------------------------------------------------
+Steinberg::tresult PLUGIN_API Controller::notify (Steinberg::Vst::IMessage* message)
+{
+	if (meterExchange.onMessage (message))
+		return Steinberg::kResultTrue;
+	return EditController::notify (message);
+}
+
+//------------------------------------------------------------------------
+Steinberg::IPlugView* PLUGIN_API Controller::createView (Steinberg::FIDString name)
+{
+	if (name && Steinberg::FIDStringsEqual (name, Steinberg::Vst::ViewType::kEditor))
+		return new Editor (this);
+	return nullptr;
+}
+
+//------------------------------------------------------------------------
+void PLUGIN_API Controller::queueOpened (Steinberg::Vst::DataExchangeUserContextID userContextID,
+                                         Steinberg::uint32 /*blockSize*/,
+                                         Steinberg::TBool& dispatchOnBackgroundThread)
+{
+	// Meter packets are tiny; handle them on the main thread.
+	if (userContextID == kMeterQueueContextId)
+		dispatchOnBackgroundThread = false;
+}
+
+//------------------------------------------------------------------------
+void PLUGIN_API Controller::queueClosed (Steinberg::Vst::DataExchangeUserContextID /*userContextID*/)
+{
+}
+
+//------------------------------------------------------------------------
+void PLUGIN_API Controller::onDataExchangeBlocksReceived (
+    Steinberg::Vst::DataExchangeUserContextID userContextID, Steinberg::uint32 numBlocks,
+    Steinberg::Vst::DataExchangeBlock* block, Steinberg::TBool /*onBackgroundThread*/)
+{
+	if (userContextID != kMeterQueueContextId)
+		return;
+	for (Steinberg::uint32 i = 0; i < numBlocks; ++i)
+	{
+		if (block[i].size < sizeof (MeterPacket))
+			continue;
+		const auto& packet = *static_cast<const MeterPacket*> (block[i].data);
+		for (int ch = 0; ch < kMaxMeterChannels; ++ch)
+		{
+			meterStateCache.setRms (ch, packet.rms[ch]);
+			meterStateCache.setPeak (ch, packet.peak[ch]);
+			meterStateCache.setClip (ch, (packet.clipFlags & (1u << ch)) != 0);
+		}
+	}
+}
+
+//------------------------------------------------------------------------
+void Controller::requestClipReset (int channel)
+{
+	meterStateCache.clearClip (channel);
+	if (auto* peer = getPeer ())
+	{
+		if (auto message = Steinberg::owned (allocateMessage ()))
+		{
+			message->setMessageID ("Meter/ResetClip");
+			peer->notify (message);
+		}
+	}
 }
 
 } // namespace Radixhomework

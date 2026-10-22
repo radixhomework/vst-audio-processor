@@ -11,6 +11,8 @@
 #include "dsp/meter_state.h"
 #include "params.h"
 
+#include "pluginterfaces/vst/ivstdataexchange.h"
+#include "public.sdk/source/vst/utility/dataexchange.h"
 #include "public.sdk/source/vst/vstaudioeffect.h"
 
 namespace Radixhomework {
@@ -25,6 +27,9 @@ public:
 	static Steinberg::FUnknown* createInstance (void* /*context*/);
 
 	Steinberg::tresult PLUGIN_API initialize (Steinberg::FUnknown* context) SMTG_OVERRIDE;
+	Steinberg::tresult PLUGIN_API connect (Steinberg::Vst::IConnectionPoint* other) SMTG_OVERRIDE;
+	Steinberg::tresult PLUGIN_API disconnect (Steinberg::Vst::IConnectionPoint* other) SMTG_OVERRIDE;
+	Steinberg::tresult PLUGIN_API notify (Steinberg::Vst::IMessage* message) SMTG_OVERRIDE;
 	Steinberg::tresult PLUGIN_API setBusArrangements (Steinberg::Vst::SpeakerArrangement* inputs,
 	                                                  Steinberg::int32 numIns,
 	                                                  Steinberg::Vst::SpeakerArrangement* outputs,
@@ -43,9 +48,17 @@ private:
 	DspChain chain;
 	Metering metering;
 
-	// Post-pan output levels (bypass included), published lock-free to the
-	// UI; the editor gains access in task 5.x.
+	// Post-pan output levels (bypass included), published to the controller
+	// through the VST3 data exchange (design D5/D6).
 	MeterState meterState;
+	Steinberg::Vst::DataExchangeHandler meterExchange {
+		this, [] (Steinberg::Vst::DataExchangeHandler::Config& config,
+		          const Steinberg::Vst::ProcessSetup&) {
+			config.blockSize = sizeof (MeterPacket);
+			config.numBlocks = 16;
+			config.userContextID = kMeterQueueContextId;
+			return true;
+		}};
 
 	bool bypassActive {false};
 	bool monoSumActive {false};

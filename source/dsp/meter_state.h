@@ -38,6 +38,9 @@ public:
 
 	void latchClip (int channel) { clip[channel].store (true); }
 
+	/// Restores a latched state received from the processor (controller side).
+	void setClip (int channel, bool latched) { clip[channel].store (latched); }
+
 	bool getClip (int channel) const { return clip[channel].load (); }
 
 	/// Clear path the UI calls when the user clicks a lit clip indicator.
@@ -48,6 +51,19 @@ private:
 	std::array<std::atomic<float>, kMaxMeterChannels> peak {};
 	std::array<std::atomic<bool>, kMaxMeterChannels> clip {};
 };
+
+//------------------------------------------------------------------------
+// Snapshot sent per block from the processor to the controller via VST3
+// data exchange (design D5/D6): the lock-free audio-to-UI channel.
+struct MeterPacket
+{
+	float rms[kMaxMeterChannels];
+	float peak[kMaxMeterChannels];
+	Steinberg::uint32 clipFlags; ///< one bit per channel
+};
+
+/// Data-exchange queue identity for the meter stream.
+constexpr Steinberg::uint32 kMeterQueueContextId = 0x4D455445; // 'METE'
 
 //------------------------------------------------------------------------
 // Audio-side measurement: per-channel block peak/RMS with instant attack
