@@ -34,7 +34,7 @@ const CColor scaleColor {140, 142, 148};
 const CColor clipLitColor {240, 60, 60};
 const CColor clipDarkColor {70, 30, 30};
 
-const int kScaleMarksDb[] = {0, -6, -12, -24, -48};
+constexpr std::array<int, 5> kScaleMarksDb {0, -6, -12, -24, -48};
 
 } // namespace
 

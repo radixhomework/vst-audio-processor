@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <format>
+#include <numbers>
 
 using namespace VSTGUI;
 
@@ -68,7 +69,7 @@ public:
 		                  static_cast<float> (valueAngle));
 
 		// Pointer.
-		const double radians = valueAngle * 3.14159265358979323846 / 180.;
+		const double radians = valueAngle * std::numbers::pi / 180.;
 		const CPoint direction (std::cos (radians), -std::sin (radians));
 		context->setFrameColor (knobPointerColor);
 		context->setLineWidth (2.);
@@ -288,8 +289,8 @@ void Editor::syncFromParameters ()
 	};
 
 	// Knobs and buttons (meters poll their own timer).
-	frame->forEachChild ([&] (CView* view) {
-		auto* control = dynamic_cast<CControl*> (view);
+	frame->forEachChild ([&update] (CView* view) {
+		const auto* control = dynamic_cast<const CControl*> (view);
 		if (control && (control->getTag () == kGainId || control->getTag () == kPanId ||
 		                control->getTag () == kMonoId || control->getTag () == kBypassId))
 			update (view);
