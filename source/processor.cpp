@@ -120,6 +120,9 @@ Steinberg::tresult PLUGIN_API Processor::setActive (Steinberg::TBool state)
 		               panFromNormalized (lastPanNormalized), monoSumActive);
 		metering.prepare (processSetup.sampleRate);
 		meterExchange.onActivate (processSetup);
+		samplesSinceMeterSend = 0;
+		meterSendIntervalSamples =
+		    static_cast<Steinberg::int32> (processSetup.sampleRate / 33.); // ~30 ms
 	}
 	else
 		meterExchange.onDeactivate ();
@@ -266,8 +269,20 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 	// Meter tap: post-pan final output on every path (metering spec).
 	metering.measure (data.outputs[0], data.numSamples, data.symbolicSampleSize, meterState);
 
-	// Publish a meter snapshot to the controller (design D5); lock-free,
-	// and a no-op unless the queue is open.
+	samplesSinceMeterSend += data.numSamples;
+	if (samplesSinceMeterSend >= meterSendIntervalSamples)
+	{
+		samplesSinceMeterSend = 0;
+		publishMeterPacket ();
+	}
+	return Steinberg::kResultTrue;
+}
+
+//------------------------------------------------------------------------
+void Processor::publishMeterPacket ()
+{
+	// Publishes a snapshot to the controller (design D5); lock-free, and a
+	// no-op unless the queue is open.
 	if (auto block = meterExchange.getCurrentOrNewBlock ();
 	    block.blockID != Steinberg::Vst::InvalidDataExchangeBlockID &&
 	    block.size >= sizeof (MeterPacket))
@@ -284,7 +299,6 @@ Steinberg::tresult PLUGIN_API Processor::process (Steinberg::Vst::ProcessData& d
 		}
 		meterExchange.sendCurrentBlock ();
 	}
-	return Steinberg::kResultTrue;
 }
 
 //------------------------------------------------------------------------

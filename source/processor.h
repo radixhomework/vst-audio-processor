@@ -45,6 +45,11 @@ private:
 	// runs even for zero-sample flush calls.
 	void updateParameters (Steinberg::Vst::ProcessData& data);
 
+	// Publishes a meter snapshot at most every ~30 ms: the UI polls at that
+	// rate, and sending per audio block (~200-400 host messages per second)
+	// needlessly loads the host's main thread, making UI interaction sluggish.
+	void publishMeterPacket ();
+
 	DspChain chain;
 	Metering metering;
 
@@ -62,6 +67,10 @@ private:
 
 	bool bypassActive {false};
 	bool monoSumActive {false};
+
+	// Meter publishing throttle state.
+	Steinberg::int32 samplesSinceMeterSend {0};
+	Steinberg::int32 meterSendIntervalSamples {0};
 
 	// Last normalized values seen (or restored), for state persistence.
 	Steinberg::Vst::ParamValue lastGainNormalized {gainDefaultNormalized ()};
