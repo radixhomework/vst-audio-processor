@@ -151,8 +151,23 @@ CTextLabel* addLabel (CViewContainer* container, const CRect& rect, const char* 
 } // namespace
 
 //------------------------------------------------------------------------
+namespace {
+
+// The panel size must be known BEFORE the view is attached: hosts size
+// their editor window from IPlugView::getSize() at creation, so the base
+// class needs the rect right at construction. Fixed panel, shared by all
+// instances (design D6).
+Steinberg::ViewRect& panelViewRect ()
+{
+	static Steinberg::ViewRect rect (0, 0, 420, 220);
+	return rect;
+}
+
+} // namespace
+
+//------------------------------------------------------------------------
 Editor::Editor (Steinberg::Vst::EditController* editController)
-: Steinberg::Vst::VSTGUIEditor (editController)
+: Steinberg::Vst::VSTGUIEditor (editController, &panelViewRect ())
 {
 }
 
