@@ -254,12 +254,12 @@ Steinberg::tresult PLUGIN_API Editor::onSize (Steinberg::ViewRect* newSize)
 //------------------------------------------------------------------------
 // Keeps the 21:11 aspect ratio and clamps to the usability bounds; hosts
 // call this while the user drags the resize grip.
-Steinberg::tresult PLUGIN_API Editor::checkSizeConstraint (Steinberg::ViewRect* rect)
+Steinberg::tresult PLUGIN_API Editor::checkSizeConstraint (Steinberg::ViewRect* newRect)
 {
-	if (!rect)
+	if (!newRect)
 		return Steinberg::kInvalidArgument;
 
-	auto width = std::clamp<Steinberg::int32> (rect->right - rect->left, kPanelMinWidth,
+	auto width = std::clamp<Steinberg::int32> (newRect->right - newRect->left, kPanelMinWidth,
 	                                           kPanelMaxWidth);
 	auto height = width * kPanelBaseHeight / kPanelBaseWidth;
 	if (height > kPanelMaxHeight)
@@ -273,8 +273,8 @@ Steinberg::tresult PLUGIN_API Editor::checkSizeConstraint (Steinberg::ViewRect* 
 		width = height * kPanelBaseWidth / kPanelBaseHeight;
 	}
 
-	rect->right = rect->left + width;
-	rect->bottom = rect->top + height;
+	newRect->right = newRect->left + width;
+	newRect->bottom = newRect->top + height;
 	return Steinberg::kResultTrue;
 }
 
@@ -396,7 +396,7 @@ void Editor::syncFromParameters ()
 //------------------------------------------------------------------------
 void Editor::relayout (double scale)
 {
-	for (auto& [view, baseRect] : baseLayout)
+	for (const auto& [view, baseRect] : baseLayout)
 	{
 		const VSTGUI::CRect scaled (baseRect.left * scale, baseRect.top * scale,
 		                            baseRect.right * scale, baseRect.bottom * scale);
@@ -407,7 +407,7 @@ void Editor::relayout (double scale)
 	if (!baseLabelFonts.empty ())
 	{
 		scaledFont.setSize (static_cast<VSTGUI::CCoord> (baseLabelFonts.front ().second * scale));
-		for (auto& [label, baseSize] : baseLabelFonts)
+		for (const auto& [label, baseSize] : baseLabelFonts)
 			label->setFont (&scaledFont);
 	}
 	frame->invalid ();
