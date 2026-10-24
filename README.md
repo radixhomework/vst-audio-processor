@@ -26,3 +26,9 @@ Base template for new **RadixHomeWork** repositories.
   or deployment — see `AGENTS.md`, "Product & architecture documentation".
 - `openspec/` and `AGENTS.md` are project content and **should** be
   committed; only agent-local directories are ignored.
+
+## Third-party notices
+
+This project builds against the Steinberg VST3 SDK (dual-licensed; used
+here under its GPLv3 option) and VSTGUI 4 (BSD). Full license texts:
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).

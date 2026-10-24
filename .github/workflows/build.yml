@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+
+jobs:
+  windows:
+    name: Windows build + VST3 validator + Sonar
+    runs-on: windows-2022
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Full history: SonarCloud new-code detection and blame need it.
+          fetch-depth: 0
+
+      # Sonar's build wrapper records the MSVC invocations during the build;
+      # the analysis step later consumes its bw-output directory.
+      - name: Download Sonar build wrapper
+        run: |
+          Invoke-WebRequest 'https://sonarcloud.io/static/cpp/build-wrapper-win-x86.zip' -OutFile bw.zip
+          Expand-Archive bw.zip -DestinationPath .
+
+      # The VST3 SDK is fetched by CMake FetchContent (pinned tag in
+      # CMakeLists.txt); no submodules or extra setup needed.
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -T v143
+
+      - name: Build (Release, under Sonar build wrapper)
+        run: ./build-wrapper-win-x86/build-wrapper-win-x86-64.exe --out-dir bw-output cmake --build build --config Release
+
+      - name: Run VST3 validator
+        run: ./build/bin/Release/validator.exe "./build/VST3/Release/AudioProcessor.vst3"
+
+      # Gracefully skipped until the SONAR_TOKEN secret is provisioned on the
+      # repo (SonarCloud project + token; see task 6.4).
+      - name: SonarCloud analysis
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v8.3.0
+
+      # Bundles are release material: only produced for tag pushes.
+      - name: Upload plugin bundle
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v7
+        with:
+          name: AudioProcessor-${{ github.ref_name }}-windows-vst3
+          path: build/VST3/Release/AudioProcessor.vst3
+          if-no-files-found: error
