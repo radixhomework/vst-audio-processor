@@ -4,6 +4,12 @@
 #include "meter_view.h"
 #include "params.h"
 
+#if defined(_WIN32)
+#include "vstgui/lib/platform/platformfactory.h"
+#include "vstgui/lib/platform/win32/win32factory.h"
+#endif
+
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <format>
@@ -15,6 +21,24 @@ namespace Radixhomework {
 
 //------------------------------------------------------------------------
 namespace {
+
+// Panel geometry (design D6): the layout is authored at this base size and
+// scaled as a whole on resize; bounds keep it usable in both directions.
+constexpr int kPanelBaseWidth = 420;
+constexpr int kPanelBaseHeight = 220;
+constexpr int kPanelMinWidth = 315;
+constexpr int kPanelMinHeight = 165;
+constexpr int kPanelMaxWidth = 840;
+constexpr int kPanelMaxHeight = 440;
+
+// The panel size must be known BEFORE the view is attached: hosts size
+// their editor window from IPlugView::getSize() at creation, so the base
+// class needs the rect right at construction.
+Steinberg::ViewRect& panelViewRect ()
+{
+	static Steinberg::ViewRect rect (0, 0, kPanelBaseWidth, kPanelBaseHeight);
+	return rect;
+}
 
 const CColor panelColor {40, 44, 52};
 const CColor textColor {220, 222, 228};
@@ -151,21 +175,6 @@ CTextLabel* addLabel (CViewContainer* container, const CRect& rect, const char* 
 } // namespace
 
 //------------------------------------------------------------------------
-namespace {
-
-// The panel size must be known BEFORE the view is attached: hosts size
-// their editor window from IPlugView::getSize() at creation, so the base
-// class needs the rect right at construction. Fixed panel, shared by all
-// instances (design D6).
-Steinberg::ViewRect& panelViewRect ()
-{
-	static Steinberg::ViewRect rect (0, 0, 420, 220);
-	return rect;
-}
-
-} // namespace
-
-//------------------------------------------------------------------------
 Editor::Editor (Steinberg::Vst::EditController* editController)
 : Steinberg::Vst::VSTGUIEditor (editController, &panelViewRect ())
 {
@@ -181,7 +190,17 @@ Controller* Editor::pluginController ()
 // void* parent: the native window handle, per the IPlugView contract.
 bool PLUGIN_API Editor::open (void* parent, const PlatformType& platformType) // NOSONAR
 {
-	const CRect panelRect (0, 0, 420, 220);
+#if defined(_WIN32)
+	// Cubase renders blank with VSTGUI's DirectComposition child window
+	// (WS_EX_NOREDIRECTIONBITMAP): paint calls run but nothing composites,
+	// while the SDK's editorhost shows the same binary fine. Force the
+	// classic redirection path for consistent behavior across hosts
+	// (design D6 rendering note).
+	if (auto* win32Factory = getPlatformFactory ().asWin32Factory ())
+		win32Factory->disableDirectComposition ();
+#endif
+
+	const CRect panelRect (0, 0, kPanelBaseWidth, kPanelBaseHeight);
 	frame = new CFrame (panelRect, this); // NOSONAR
 	frame->setBackgroundColor (panelColor);
 	buildControls ();
@@ -206,6 +225,57 @@ void PLUGIN_API Editor::close ()
 		frame->forget ();
 		frame = nullptr;
 	}
+}
+
+//------------------------------------------------------------------------
+// Resizable panel (plugin-ui spec, task 5.5).
+Steinberg::tresult PLUGIN_API Editor::canResize ()
+{
+	return Steinberg::kResultTrue;
+}
+
+//------------------------------------------------------------------------
+// Scales the whole layout: every view keeps its authored base rect and is
+// repositioned proportionally to the requested size. Plain pixel rects -
+// no zoom transform - so every renderer path behaves the same. The base
+// implementation first syncs the frame itself to the host's rect.
+Steinberg::tresult PLUGIN_API Editor::onSize (Steinberg::ViewRect* newSize)
+{
+	const Steinberg::tresult result = Steinberg::Vst::VSTGUIEditor::onSize (newSize);
+	if (frame && newSize)
+	{
+		const double scale = static_cast<double> (newSize->bottom - newSize->top) /
+		                     static_cast<double> (kPanelBaseHeight);
+		relayout (scale);
+	}
+	return result;
+}
+
+//------------------------------------------------------------------------
+// Keeps the 21:11 aspect ratio and clamps to the usability bounds; hosts
+// call this while the user drags the resize grip.
+Steinberg::tresult PLUGIN_API Editor::checkSizeConstraint (Steinberg::ViewRect* rect)
+{
+	if (!rect)
+		return Steinberg::kInvalidArgument;
+
+	auto width = std::clamp<Steinberg::int32> (rect->right - rect->left, kPanelMinWidth,
+	                                           kPanelMaxWidth);
+	auto height = width * kPanelBaseHeight / kPanelBaseWidth;
+	if (height > kPanelMaxHeight)
+	{
+		height = kPanelMaxHeight;
+		width = height * kPanelBaseWidth / kPanelBaseHeight;
+	}
+	else if (height < kPanelMinHeight)
+	{
+		height = kPanelMinHeight;
+		width = height * kPanelBaseWidth / kPanelBaseHeight;
+	}
+
+	rect->right = rect->left + width;
+	rect->bottom = rect->top + height;
+	return Steinberg::kResultTrue;
 }
 
 //------------------------------------------------------------------------
@@ -240,8 +310,19 @@ void Editor::buildControls ()
 	frame->addView (bypassButton);
 
 	// --- L/R meters with clip LEDs --------------------------------------
-	frame->addView (new MeterView (CRect (342, 24, 358, 200), *pluginController (), 0)); // NOSONAR
-	frame->addView (new MeterView (CRect (360, 24, 376, 200), *pluginController (), 1)); // NOSONAR
+	auto* meterL = new MeterView (CRect (342, 24, 358, 200), *pluginController (), 0); // NOSONAR
+	auto* meterR = new MeterView (CRect (360, 24, 376, 200), *pluginController (), 1); // NOSONAR
+	frame->addView (meterL);
+	frame->addView (meterR);
+
+	// Remember the authored layout for proportional scaling on resize.
+	baseLayout.clear ();
+	baseLabelFonts.clear ();
+	frame->forEachChild ([this] (VSTGUI::CView* view) {
+		baseLayout.emplace_back (view, view->getViewSize ());
+		if (auto* label = dynamic_cast<VSTGUI::CTextLabel*> (view))
+			baseLabelFonts.emplace_back (label, label->getFont ()->getSize ());
+	});
 
 	syncFromParameters ();
 }
@@ -310,6 +391,26 @@ void Editor::syncFromParameters ()
 		                control->getTag () == kMonoId || control->getTag () == kBypassId))
 			update (view);
 	});
+}
+
+//------------------------------------------------------------------------
+void Editor::relayout (double scale)
+{
+	for (auto& [view, baseRect] : baseLayout)
+	{
+		const VSTGUI::CRect scaled (baseRect.left * scale, baseRect.top * scale,
+		                            baseRect.right * scale, baseRect.bottom * scale);
+		view->setViewSize (scaled);
+		view->setMouseableArea (scaled);
+		view->invalid ();
+	}
+	if (!baseLabelFonts.empty ())
+	{
+		scaledFont.setSize (static_cast<VSTGUI::CCoord> (baseLabelFonts.front ().second * scale));
+		for (auto& [label, baseSize] : baseLabelFonts)
+			label->setFont (&scaledFont);
+	}
+	frame->invalid ();
 }
 
 //------------------------------------------------------------------------
