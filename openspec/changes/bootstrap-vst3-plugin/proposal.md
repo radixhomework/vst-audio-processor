@@ -27,12 +27,15 @@ rounds (tuner, dynamics, EQ, saturation/distortion, modulation) will extend.
   ~0 dBFS with latching, click-to-reset indicators.
 - Minimal VSTGUI editor: gain/pan knobs with numeric readouts, mono toggle,
   bypass button, L/R meter bars (RMS fill + peak line + hold + dB scale), clip
-  LEDs.
+  LEDs. The panel is resizable (corner drag), scaling the layout
+  proportionally between a minimum and a maximum size. (Scope update:
+  resizability was originally deferred; moved into Round 1 during host
+  verification.)
 - PRODUCT.md and ARCHITECTURE.md stubs filled in (first task touching the repo).
 - Light CI: GitHub Actions workflow doing a Windows build + VST3 validator run.
 
-Deliberately out of scope for this change: preset browser UI, resizable or
-skinnable UI, separate input/output gains, M/S width controls, LUFS loudness
+Deliberately out of scope for this change: preset browser UI, skinnable UI,
+separate input/output gains, M/S width controls, LUFS loudness
 metering, and all later-round features (tuner, dynamics, EQ, saturation,
 distortion, modulation).
 

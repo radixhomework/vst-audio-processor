@@ -82,6 +82,13 @@
       `MeterState` on a ~30 ms timer; clickable clip LEDs above the bars.
       Verify: steady −10 dBFS sine reads ≈ −10 on both bars; hold marker holds
       then decays; clicking a lit clip LED resets it (completes 4.2).
+- [x] 5.5 Resizable panel (Round-1 scope update): `canResize` + `checkSizeConstraint`
+      aspect-locked to 21:11 with bounds 315×165..840×440, whole-layout scaling
+      via `CFrame::setZoom`; bundle the Cubase blank-render fix — disable
+      VSTGUI's DirectComposition path (paints but never composites in Cubase;
+      draw calls traced, screen white). Verify: corner-drag resize works in
+      Cubase at 100% and 150% DPI with all controls usable at both bounds, and
+      the panel actually renders in Cubase.
 
 ## 6. Documentation and quality gates
 

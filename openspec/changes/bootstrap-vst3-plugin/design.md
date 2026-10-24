@@ -117,8 +117,20 @@ The editor builds its view tree in C++ (SDK-samples style) rather than a
 the meter view matters; XML indirection buys nothing at this size. Knobs and
 buttons bind through VSTGUI parameter attachments so all moves are host
 automation; meters are *not* exposed as VST3 output parameters (keeps the
-host's generic editor and automation lanes clean). Panel is a fixed
-~420×220 px; exact pixel layout is an implementation detail.
+host's generic editor and automation lanes clean).
+
+The panel is resizable (scope update — originally fixed-size): the layout is
+authored at a base of 420×220 and scaled as a whole via `CFrame::setZoom`;
+`IPlugView::canResize` returns true and `checkSizeConstraint` keeps the 21:11
+aspect ratio, clamped between 315×165 (minimum) and 840×440 (maximum).
+
+Rendering note from Cubase verification: VSTGUI's DirectComposition path
+creates the child window with `WS_EX_NOREDIRECTIONBITMAP`; in Cubase that
+window demonstrably paints (draw calls traced) but never composites — the
+user sees the host's white background — while the SDK's editorhost renders
+fine. The editor setup therefore disables the DirectComposition factory
+(`Win32Factory::disableDirectComposition`) so every host uses the classic
+redirection path uniformly.
 
 ### D7 — Build, CI, and identity
 

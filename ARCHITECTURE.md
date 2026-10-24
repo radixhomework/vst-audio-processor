@@ -38,7 +38,7 @@ snapshots from the audio thread to the UI lock-free.
 | DSP chain | C++20 header-only | Fixed order mono-sum → gain → pan; no-op rules on mono buses | `source/dsp/chain.h` |
 | Smoothing | C++20 header-only | Linear ~15 ms ramp shared by continuous parameters | `source/dsp/smoothed_value.h` |
 | Metering | C++20 + atomics | Per-block peak/RMS, ballistics, clip latch, `MeterPacket` type | `source/dsp/meter_state.h` |
-| Editor | VSTGUI 4 (programmatic) | 420×220 panel: vector knobs, readouts, mono/bypass buttons, meters | `source/ui/editor.h/.cpp` |
+| Editor | VSTGUI 4 (programmatic) | Resizable panel (base 420×220, 21:11 aspect, 315×165–840×440): vector knobs, readouts, mono/bypass buttons, meters | `source/ui/editor.h/.cpp` |
 | Meter view | VSTGUI 4 custom widget | RMS fill, peak line, 2 s falling hold, dB scale, clickable clip LED | `source/ui/meter_view.h/.cpp` |
 
 ## Data flow

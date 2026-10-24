@@ -38,7 +38,7 @@ VST3/C++ audio development, which shapes its "boring and correct" scope.
 
 ### Out of scope (deliberately)
 
-- Preset browser UI, resizable/skinnable UI, separate input/output gains,
+- Preset browser UI, skinnable UI, separate input/output gains,
   M/S width controls, LUFS loudness metering.
 - macOS builds (source stays platform-portable; a macOS build is build
   configuration, not a rewrite).
@@ -64,6 +64,7 @@ VST3/C++ audio development, which shapes its "boring and correct" scope.
 | Metering | Peak + RMS, hold, clip latch/reset | Done (Round 1) |
 | Bypass | Standard VST3 bypass, strict pass-through | Done (Round 1) |
 | Editor | Programmatic VSTGUI panel, host-automated controls | Done (Round 1) |
+| Resizable UI | Corner-drag resize, proportional scaling, min/max bounds | In progress (Round 1 scope update) |
 
 ## Constraints & non-functional requirements
 

@@ -17,6 +17,26 @@ indicators — covering all Round-1 parameters and metering.
 - **THEN** the panel shows the gain and pan knobs, mono toggle, bypass button,
   and L/R meters
 
+### Requirement: Resizable editor panel
+The editor panel SHALL be resizable by the user (for example by dragging the
+host window corner), and the layout SHALL scale proportionally so all
+controls, readouts, and meters remain visible and usable. The panel SHALL
+enforce minimum and maximum sizes.
+
+#### Scenario: Corner-drag resize
+- **WHEN** the user enlarges the editor by dragging the host window corner
+- **THEN** the panel grows and every control scales proportionally
+
+#### Scenario: Size bounds
+- **WHEN** the user attempts to shrink the panel below the minimum or grow it
+  beyond the maximum
+- **THEN** the size clamps at the bound
+
+#### Scenario: Content stays usable
+- **WHEN** the panel is at its minimum size
+- **THEN** knobs, readouts, buttons, meter bars, and clip LEDs are all fully
+  visible
+
 ### Requirement: Knob readouts
 The gain and pan knobs SHALL each display their current value at all times:
 gain in dB (displaying "−∞" at minimum), pan as C / L\<n\> / R\<n\>. User
